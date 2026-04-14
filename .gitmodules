@@ -1,0 +1,31 @@
+[submodule "kernel"]
+	path = kernel
+	url = https://github.com/seL4/seL4.git
+[submodule "projects/musllibc"]
+	path = projects/musllibc
+	url = https://github.com/seL4/musllibc.git
+	branch = sel4
+[submodule "projects/seL4_libs"]
+	path = projects/seL4_libs
+	url = https://github.com/seL4/seL4_libs.git
+[submodule "projects/sel4_projects_libs"]
+	path = projects/sel4_projects_libs
+	url = https://github.com/seL4/sel4_projects_libs.git
+[submodule "projects/sel4runtime"]
+	path = projects/sel4runtime
+	url = https://github.com/seL4/sel4runtime.git
+[submodule "projects/sel4test"]
+	path = projects/sel4test
+	url = https://github.com/seL4/sel4test.git
+[submodule "projects/util_libs"]
+	path = projects/util_libs
+	url = https://github.com/seL4/util_libs.git
+[submodule "tools/seL4"]
+	path = tools/seL4
+	url = https://github.com/seL4/seL4_tools.git
+[submodule "tools/nanopb"]
+	path = tools/nanopb
+	url = https://github.com/nanopb/nanopb.git
+[submodule "tools/opensbi"]
+	path = tools/opensbi
+	url = https://github.com/riscv/opensbi.git
