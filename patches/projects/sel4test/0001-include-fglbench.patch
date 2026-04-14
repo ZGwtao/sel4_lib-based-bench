@@ -1,0 +1,30 @@
+From a936425ff32057090f927f272e50fe77c5bfae82 Mon Sep 17 00:00:00 2001
+From: Guangtao Zhu <guangtaozhu@outlook.com>
+Date: Wed, 15 Apr 2026 00:15:47 +1000
+Subject: [PATCH] include fglbench
+
+Signed-off-by: Guangtao Zhu <guangtaozhu@outlook.com>
+---
+ CMakeLists.txt | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 01300c4..0bf8650 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -26,7 +26,11 @@ if((NOT Sel4testAllowSettingsOverride) AND (KernelArchARM OR KernelArchRiscV))
+ endif()
+ elfloader_import_project()
+ 
+-add_subdirectory(apps/sel4test-driver)
++if(BuildBenchmarks)
++    add_subdirectory(apps/fglbench)
++else()
++    add_subdirectory(apps/sel4test-driver)
++endif()
+ 
+ if(SIMULATION)
+   include(simulation)
+-- 
+2.43.0
+
