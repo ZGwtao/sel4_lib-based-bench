@@ -2,3 +2,4 @@ build
 .venv
 pyenv
 .pyenv
+.sel4_cache
