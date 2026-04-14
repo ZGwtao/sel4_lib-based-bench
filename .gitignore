@@ -1,0 +1,4 @@
+build
+.venv
+pyenv
+.pyenv
