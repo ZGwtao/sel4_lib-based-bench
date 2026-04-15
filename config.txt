@@ -1,0 +1,10 @@
+
+../init-build.sh \
+    -DMCS=ON -DRELEASE=ON -DKernelBenchmarks=generic \
+    -DPLATFORM=odroidc4 \
+    -DBuildBenchmarks=ON \
+    -DKernelFastpath=ON -DKernelSignalFastpath=ON \
+    -DKernelArmExportPMUUser=ON -DKernelArmHypervisorSupport=ON \
+    -DKernelFineGrainedLocking=OFF \
+    -DNumCores=1 -DSMP=ON -DWhichBenchmark=0
+
