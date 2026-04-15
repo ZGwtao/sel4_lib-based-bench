@@ -549,6 +549,18 @@ start_ipc_pingpong_pair(env_t *env, seL4_Word core, struct ipc_pingpong_core_sta
     state->ping_params[0] = state->pong_params[0];
     state->ping_params[1] = (seL4_Word)&state->counter;
     set_affinity(env, &state->ping_thread, core);
+#if 0
+    {
+        seL4_TCB_SetFlags_t res;
+        seL4_TCBFlag flags_clear = seL4_TCBFlag_NoFlag, flags_set = seL4_TCBFlag_fpuDisabled;
+
+        res = seL4_TCB_SetFlags(state->ping_thread.tcb.cptr, flags_clear, flags_set);
+        assert(res.error == seL4_NoError);
+
+        res = seL4_TCB_SetFlags(state->pong_thread.tcb.cptr, flags_clear, flags_set);
+        assert(res.error == seL4_NoError);
+    }
+#endif
     sel4utils_start_thread(
         &state->ping_thread,
         (sel4utils_thread_entry_fn)(max ? ipc_client_max_fn : ipc_client_throughput_fn),
