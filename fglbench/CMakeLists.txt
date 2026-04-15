@@ -25,7 +25,7 @@ sel4_libs_import_libraries()
 # is called.
 set(LibNanopb ON CACHE BOOL "" FORCE)
 sel4_projects_libs_import_libraries()
-add_subdirectory(../../libsel4testsupport libsel4testsupport)
+add_subdirectory(${CMAKE_SOURCE_DIR}/libsel4testsupport libsel4testsupport)
 
 add_executable(fglbench EXCLUDE_FROM_ALL src/main.c src/benchmarks.c src/timer.c src/utils.c)
 target_link_libraries(
