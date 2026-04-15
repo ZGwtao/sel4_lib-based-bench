@@ -26,8 +26,20 @@ sel4_libs_import_libraries()
 set(LibNanopb ON CACHE BOOL "" FORCE)
 sel4_projects_libs_import_libraries()
 add_subdirectory(${CMAKE_SOURCE_DIR}/libsel4testsupport libsel4testsupport)
+add_subdirectory(${CMAKE_SOURCE_DIR}/apps/benchset benchset)
+include(cpio)
+MakeCPIO(archive.o "$<TARGET_FILE:benchset>")
 
-add_executable(fglbench EXCLUDE_FROM_ALL src/main.c src/benchmarks.c src/timer.c src/utils.c)
+add_executable(
+    fglbench
+    EXCLUDE_FROM_ALL
+    src/main.c
+    src/benchmarks.c
+    src/timer.c
+    src/utils.c
+    archive.o
+)
+
 target_link_libraries(
     fglbench
     PUBLIC
