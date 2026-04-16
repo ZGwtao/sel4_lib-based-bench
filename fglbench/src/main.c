@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <cpio/cpio.h>
+
 /* seL4 libraries */
 #include <sel4platsupport/platsupport.h>
 #include <sel4platsupport/io.h>
@@ -21,6 +23,9 @@
 #include <sel4platsupport/platsupport.h>
 #include <platsupport/timer.h>
 
+#include <sel4utils/elf.h>
+#include <sel4utils/process.h>
+
 /* FGLBench includes */
 #include "utils.h"
 #include "benchmarks.h"
@@ -33,6 +38,12 @@ env_t env_global;
 vspace_t vspace_global;
 simple_t simple_global;
 sel4utils_alloc_data_t global_alloc_data;
+
+extern char _cpio_archive[];
+extern char _cpio_archive_end[];
+
+static elf_t benchset_elf_file;
+
 
 void
 bootstrap(env_t* env)
@@ -64,9 +75,39 @@ bootstrap(env_t* env)
     assert(!err);
 }
 
+void setup_proc(sel4utils_process_t *proc, const char *name)
+{
+    int error;
+
+    sel4utils_process_config_t config = process_config_default_simple(env_global.simple, name, 100);
+    config = process_config_mcp(config, seL4_MaxPrio);
+    config = process_config_auth(config, simple_get_tcb(env_global.simple));
+    config = process_config_create_cnode(config, 5);
+    error = sel4utils_configure_process_custom(proc, env_global.vka, env_global.vspace, config);
+    assert(error == 0);
+
+    fglprintf("Process %s set up with entry point %p\n", name, proc->entry_point);
+}
+
+sel4utils_process_t proc_benchset;
+
 void *
 main_continued(void *arg)
 {
+    setup_proc(&proc_benchset, "benchset");
+
+    int err;
+
+    err = sel4utils_spawn_process_v(&proc_benchset, env_global.vka, env_global.vspace, 0, NULL, 1);
+    assert(!err);
+    fglprintf("Spawned benchset process\n");
+
+    seL4_Call(proc_benchset.fault_endpoint.cptr, seL4_MessageInfo_new(0, 0, 0, 0));
+    fglprintf("Benchset process has started\n");
+
+    seL4_SchedContext_Unbind(proc_benchset.thread.sched_context.cptr);
+
+#if 1
     typedef void (*benchmark_t)(env_t *);
     benchmark_t benchmarks[] = {
         bm_ipc_tp,
@@ -84,7 +125,7 @@ main_continued(void *arg)
     };
     fglprintf("Running benchmark %d on %d cores\n", CONFIG_WHICH_BENCHMARK, CONFIG_NUM_CORES);
     benchmarks[CONFIG_WHICH_BENCHMARK](&env_global);
-
+#endif
     /* We are done */
     seL4_TCB_Suspend(seL4_CapInitThreadTCB);
     return 0;
