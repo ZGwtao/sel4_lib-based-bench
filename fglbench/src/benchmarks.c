@@ -234,6 +234,25 @@ void set_affinity(env_t *env, sel4utils_thread_t *thread, seL4_Word affinity) {
     assert(!err);
 }
 
+void setup_proc(env_t *env, sel4utils_process_t *proc, const char *name, seL4_Word core)
+{
+    int error;
+
+    sel4utils_process_config_t config = process_config_default_simple(env->simple, name, 100);
+    config = process_config_mcp(config, seL4_MaxPrio);
+    config = process_config_auth(config, simple_get_tcb(env->simple));
+    config = process_config_create_cnode(config, 5);
+    error = sel4utils_configure_process_custom(proc, env->vka, env->vspace, config);
+    assert(error == 0);
+
+    set_affinity(env, &proc->thread, core);
+
+    fglprintf("Process %s on core %d set up with entry point %p\n", name, core, proc->entry_point);
+}
+
+sel4utils_process_t bench_proc_per_core[CONFIG_NUM_CORES];
+
+
 #define CONTENDER_COPY_REGISTERS 1
 
 struct contender_core_state {
@@ -551,7 +570,7 @@ start_ipc_pingpong_pair(env_t *env, seL4_Word core, struct ipc_pingpong_core_sta
     state->ping_params[0] = state->pong_params[0];
     state->ping_params[1] = (seL4_Word)&state->counter;
     set_affinity(env, &state->ping_thread, core);
-#if 0
+#if 1
     {
         seL4_TCB_SetFlags_t res;
         seL4_TCBFlag flags_clear = seL4_TCBFlag_NoFlag, flags_set = seL4_TCBFlag_fpuDisabled;
@@ -572,24 +591,19 @@ start_ipc_pingpong_pair(env_t *env, seL4_Word core, struct ipc_pingpong_core_sta
     );
 }
 
-extern sel4utils_process_t proc_benchset;
-
 void
-start_ipc_ping_site_for_pong_proc(env_t *env, seL4_Word core, struct ipc_pingpong_core_state *state, bool max)
+start_ipc_ping_site_for_pong_proc(env_t *env, seL4_Word core, struct ipc_pingpong_core_state *state, bool max, sel4utils_process_t *proc_benchset)
 {
     configure_thread(env, &state->ping_thread, WORKER_PRIORITY);
-    state->ping_params[0] = proc_benchset.fault_endpoint.cptr;
+    state->ping_params[0] = proc_benchset->fault_endpoint.cptr;
     state->ping_params[1] = (seL4_Word)&state->counter;
     set_affinity(env, &state->ping_thread, core);
-#if 0
+#if 1
     {
         seL4_TCB_SetFlags_t res;
         seL4_TCBFlag flags_clear = seL4_TCBFlag_NoFlag, flags_set = seL4_TCBFlag_fpuDisabled;
 
         res = seL4_TCB_SetFlags(state->ping_thread.tcb.cptr, flags_clear, flags_set);
-        assert(res.error == seL4_NoError);
-
-        res = seL4_TCB_SetFlags(state->pong_thread.tcb.cptr, flags_clear, flags_set);
         assert(res.error == seL4_NoError);
     }
 #endif
@@ -858,11 +872,30 @@ bm_ipc_tp(env_t *env)
     }
 
     run_interrupt_thread(env, false, counters);
-
-    start_ipc_ping_site_for_pong_proc(env, 0, &core_state[0], false);
-    for (seL4_Word core = 1; core < CONFIG_NUM_CORES; core++) {
+#if 1
+    for (int i = 0; i < CONFIG_NUM_CORES; i++) {
+        setup_proc(env, &bench_proc_per_core[i], "benchset", i);
+        int err = sel4utils_spawn_process_v(&bench_proc_per_core[i], env->vka, env->vspace, 0, NULL, 1);
+        assert(!err);
+        fglprintf("Spawned benchset process for core %d\n", i);
+        seL4_Call(bench_proc_per_core[i].fault_endpoint.cptr, seL4_MessageInfo_new(0, 0, 0, 0));
+        fglprintf("Benchset process for core %d has started\n", i);
+        seL4_SchedContext_Unbind(bench_proc_per_core[i].thread.sched_context.cptr);
+        fglprintf("Benchset process for core %d has been unbound\n", i);
+    }
+#endif
+#if 1
+    for (seL4_Word core = 0; core < CONFIG_NUM_CORES; core++) {
+        start_ipc_ping_site_for_pong_proc(env, core, &core_state[core], false, &bench_proc_per_core[core]);
+    }
+    // for (seL4_Word core = 1; core < CONFIG_NUM_CORES; core++) {
+    //     start_ipc_pingpong_pair(env, core, &core_state[core], false);
+    // }
+#else
+    for (seL4_Word core = 0; core < CONFIG_NUM_CORES; core++) {
         start_ipc_pingpong_pair(env, core, &core_state[core], false);
     }
+#endif
 }
 
 void

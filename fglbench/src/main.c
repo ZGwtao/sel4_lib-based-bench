@@ -75,37 +75,19 @@ bootstrap(env_t* env)
     assert(!err);
 }
 
-void setup_proc(sel4utils_process_t *proc, const char *name)
-{
-    int error;
-
-    sel4utils_process_config_t config = process_config_default_simple(env_global.simple, name, 100);
-    config = process_config_mcp(config, seL4_MaxPrio);
-    config = process_config_auth(config, simple_get_tcb(env_global.simple));
-    config = process_config_create_cnode(config, 5);
-    error = sel4utils_configure_process_custom(proc, env_global.vka, env_global.vspace, config);
-    assert(error == 0);
-
-    fglprintf("Process %s set up with entry point %p\n", name, proc->entry_point);
-}
-
-sel4utils_process_t proc_benchset;
-
 void *
 main_continued(void *arg)
 {
-    setup_proc(&proc_benchset, "benchset");
+    // int err;
 
-    int err;
+    // err = sel4utils_spawn_process_v(&proc_benchset, env_global.vka, env_global.vspace, 0, NULL, 1);
+    // assert(!err);
+    // fglprintf("Spawned benchset process\n");
 
-    err = sel4utils_spawn_process_v(&proc_benchset, env_global.vka, env_global.vspace, 0, NULL, 1);
-    assert(!err);
-    fglprintf("Spawned benchset process\n");
+    // seL4_Call(proc_benchset.fault_endpoint.cptr, seL4_MessageInfo_new(0, 0, 0, 0));
+    // fglprintf("Benchset process has started\n");
 
-    seL4_Call(proc_benchset.fault_endpoint.cptr, seL4_MessageInfo_new(0, 0, 0, 0));
-    fglprintf("Benchset process has started\n");
-
-    seL4_SchedContext_Unbind(proc_benchset.thread.sched_context.cptr);
+    // seL4_SchedContext_Unbind(proc_benchset.thread.sched_context.cptr);
 
 #if 1
     typedef void (*benchmark_t)(env_t *);
