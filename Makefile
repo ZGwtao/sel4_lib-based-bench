@@ -41,7 +41,10 @@ create-links: ## Create symlinks required by the project
 	@echo "=== Creating symlinks ==="
 	mkdir -p projects/sel4test/apps
 	ln -sfn ../../../fglbench projects/sel4test/apps/fglbench
+	ln -sfn ../../../benchset projects/sel4test/apps/benchset
 	@echo "  projects/sel4test/apps/fglbench -> ../../../fglbench"
+	@echo "  projects/sel4test/apps/benchset -> ../../../benchset"
+
 
 # =============================================================================
 
