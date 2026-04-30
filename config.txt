@@ -64,3 +64,10 @@ seL4-14.0.0
     -DNumCores=1 -DSMP=OFF -DWhichBenchmark=0 \
     -DCROSS_COMPILER_PREFIX=aarch64-none-linux-gnu- \
     -DRELEASE=ON
+
+
+When seL4 kernel version == 14.0.0 (or > 13.0.0)
+Remember to turn off the configuration for HardwareDebugAPI at settings.cmake
+
+Also, it's worth noting that:
+- gen_config.h is useful if you want to know the difference between kernels
