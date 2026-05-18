@@ -871,7 +871,6 @@ bm_ipc_tp(env_t *env)
         counters[core] = &core_state[core].counter;
     }
 
-    run_interrupt_thread(env, false, counters);
 #if 1
     for (int i = 0; i < CONFIG_NUM_CORES; i++) {
         setup_proc(env, &bench_proc_per_core[i], "benchset", i);
@@ -884,6 +883,7 @@ bm_ipc_tp(env_t *env)
         fglprintf("Benchset process for core %d has been unbound\n", i);
     }
 #endif
+    run_interrupt_thread(env, false, counters);
 #if 1
     for (seL4_Word core = 0; core < CONFIG_NUM_CORES; core++) {
         start_ipc_ping_site_for_pong_proc(env, core, &core_state[core], false, &bench_proc_per_core[core]);
