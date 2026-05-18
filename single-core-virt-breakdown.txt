@@ -1,0 +1,35 @@
+
+- unicore baseline:
+    + 699
+
+SMP=ON, Virtualisation=ON
+
+- default:
+    + 1091
+- reduced: lock
+    + 980
+- reduced: lock + affinity checker
+    + 968
+
+
+- disable lazyFPURestore
+    + unicore:  652 cycles (699 - 652 = 47)
+    + smp:      923 cycles (968 - 923 = 45)
+
+- force inlining c_entry/c_exit, and arch_c_entry/arch_c_exit
+    + unicore:  652 cycles 
+    + smp:      886 cycles (923 - 886 = 37)
+
+- noinlining getCurrentCPUIndex
+    + unicore:  652 cycles
+    + smp:      835 cycles (886 - 835 = 51)
+
+- force inlining vcpu_switch
+    + unicore:  633 cycles (652 - 633 = 19)
+    + smp:      789 cycles (835 - 789 = 46)
+
+- (disable) vcpu_switch internal branch (when there is in fact no vcpu active)
+    + unicore:  618 cycles (633 - 618 = 15)
+    + smp:      672 cycles (789 - 672 = 117) => the cost of another ARCH_NODE_STATE
+
+=> 672 - 618 => the cost of NODE_STATE = 54?
