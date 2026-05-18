@@ -1,0 +1,107 @@
+SMP=ON, Virtualisation=OFF
+
+=== under the above configuration, SMP is a bit slower than unicore in turns of syscalls
+=== by comparing a ppc (protected-procedure call) round-trip, i.e., seL4_Call + seL4_ReplyRecv
+=== there are some logic at source-code level that are SMP-exclusive
+=== if we want to breakdown the cost, we need to know how many cycles do these logic cost
+=== and how many cycles come from some implicit logic (e.g., different data accessing pattern)
+
+difference at source-level:
+    => the big kernel lock on SMP
+    => some logic that checks the core affinity
+
+- by default with fastpath enabled
+    + 877 cycles
+- reduced: lock acquire + release (no big kernel lock)
+    + 795 cycles
+- reduced: (1) lock acquire + release, (2) SMP affinity check
+    + 788 cycles
+
+unicore by default:
+    + 677 cycles
+
+=== at this point, the difference between unicore and SMP is data accessing pattern only ======
+=== at source code level, there is no explict difference between SMP and unicore
+=== by data accessing pattern, we mean
+    + you need NODE_STATE(_state) to access kernel data
+    + this macro expands to NODE_STATE_ON_CORE(_state, getCurrentCPUIndex())
+    + NODE_STATE_ON_CORE on unicore returns '_state'
+    + NODE_STATE_ON_CORE on SMP returns 'ksSMP[(_core)].system._state'
+        + ksSMP is an array of structures...
+
+places where data accessing pattern could be different:
+    (1) lazyFPURestore, which is invoked by the primary control flow
+    (2) the fastpath itself
+        => lazyFPURestore can use the state that cached at the primary control flow (i.e., fastpath)
+        => but it still has to calculate the precise offset, which costs some cycles
+        => if we disable lazyFPURestore
+            + unicore:  629 cycles (delta = 677 - 629 = 48 cycles)
+            + smp:      727 cycles (delta = 788 - 727 = 61 cycles)
+        => so the cost for SMP to access data within lazyFPURestore is 61 - 48 cycles = 13 more than unicore
+        => but what is the difference within the fastpath?
+
+==== to calculate the difference, we can simply compared the instruction sequence
+==== at this point, the primary difference between the two instruction sequence is:
+    + c_entry/exit_hook
+    + arch_c_entry/exit_hook
+    + instructions for accessing kernel data (ksSMP)
+
+=== the above places indicate two facts:
+    => some compiler optimisation is unicore-specific (for the hooks)
+    => instructions for accessing kernel data on SMP are more than unicore
+
+=== to remove the noise of c_entry/arch_c_entry/c_exit/arch_c_exit
+=== we can optimise them to make sure they behave similarly on both unicore and SMP
+=== because we found that all these functions are forced inlined by the compiler on unicore
+=== while on SMP they are not.
+=== the reason why the compiler makes different inlining decisions is:
+    => on unicore, NODE_STATE_ON_CORE expands to just '_state', which does not require
+       getCurrentCPUIndex(); the data access logic inside the hooks is therefore identical
+       to that in the fastpath body, so the compiler can reuse the existing register values
+       and intermediate results -- making inlining cheap and profitable
+    => on SMP, NODE_STATE_ON_CORE expands to 'ksSMP[getCurrentCPUIndex()].system._state';
+       the compiler lacks the semantic knowledge that CPU index is a call-invariant constant
+       within a single syscall, so it cannot assume the result of getCurrentCPUIndex() inside
+       the hook is the same as the one already computed in the fastpath body; as a result,
+       the compiler treats each NODE_STATE access in the hooks as requiring a fresh
+       getCurrentCPUIndex() call and a fresh ksSMP indirection -- inlining would cause code
+       bloat without the expected benefit, so the compiler chooses not to inline
+- force inlining c_entry/exit_hook, and arch_c_entry/exit_hook
+    + unicore:  629 cycles (after disabling FPU Switch)
+    + smp:      692 cycles (after disabling FPU Switch) (727 - 692 = 35)
+    => these mean that unicore has no difference before explict forced inlining
+    => while SMP is 35 cycles faster
+
+=== we then found from the instruction sequence that:
+=== SMP still has room for improvement -> getCurrentCPUIndex
+=== this function returns the current core ID, which is a constant value for each syscall
+=== but the compiler doesn't know the semantic that well, and fetch it for more than one time
+=== this is the same root cause as the inlining issue above: both stem from the compiler
+=== lacking the call-invariant semantic of getCurrentCPUIndex within a single syscall
+    - noinlining getCurrentCPUIndex
+        + unicore:  629 cycles
+        + smp:      666 cycles (692 - 666 = 26)
+
+=== at this point, by comparing the remaining instruction sequence
+=== the only difference is the instructions for NODE_STATE_ON_CORE(_state, _core)
+    + e.g., instruction count for c_handle_fastpath_reply_recv
+        - unicore: 264
+        - smp: 282
+    + the extra 18 instructions are for ksSMP on SMP, which comes from NODE_STATE_ON_CORE
+    + that means, SMP needs around 15 instructions more for NODE_STATE_ON_CORE
+
+=== from the above analysis, we know that data accessing pattern can make a difference
+=== which cost extra 666 - 629 = 37 cycles on SMP
+=== since the cost is for round-trip, i.e., seL4_Call + seL4_ReplyRecv
+=== on average each fastpath will spend 13.5 cycles on accessing ksSMP kernel data
+
+P.S.,
+enabling all optimisation while enabling lazyFPURestore
+    + unicore:  677 cycles (compared to disabling lazyFPURestore + 48 cycles)
+    + smp:      727 cycles (+0 cycles)
+=> this indicates that the inlining operations boost SMP by 61 cycles in total
+    -> force inlining hooks:         35 cycles
+    -> noinlining getCurrentCPUIndex: 26 cycles
+    -> combined:                      61 cycles
+    -> and they are SMP-oriented, sharing the same root cause:
+       the compiler's lack of call-invariant semantic for getCurrentCPUIndex
