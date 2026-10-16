@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
 import shutil
 import subprocess
@@ -51,11 +53,14 @@ def is_installed(toolchain: dict[str, str]) -> bool:
 
 def download(target: dict[str, str]) -> None:
     if is_installed(target):
+        print(f"{target['name']}: already installed, skipping")
         return
 
     d = TOOLCHAINS_DIR / target["dir"]
     if d.exists():
         raise RuntimeError(f"{d} exists but not expected")
+
+    print(f"{target['name']}: downloading to {d}", flush=True)
 
     with tempfile.TemporaryDirectory(dir=TOOLCHAINS_DIR) as t:
         a = Path(t) / "toolchain.tar.xz"
@@ -73,6 +78,7 @@ def download(target: dict[str, str]) -> None:
 
 def main() -> None:
     TOOLCHAINS_DIR.mkdir(exist_ok=True)
+    print(f"Toolchain directory: {TOOLCHAINS_DIR}", flush=True)
     for target in TOOLCHAINS:
         download(target)
 

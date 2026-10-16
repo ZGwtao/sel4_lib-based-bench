@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: setup reset apply-patches create-links venv help
+.PHONY: setup reset apply-patches create-links venv toolchain help
 
 # Root of the repo (where this Makefile lives)
 ROOT := $(shell pwd)
@@ -69,3 +69,15 @@ venv: ## Create Python venv and print activation command
 	@echo ""
 	@echo "=== venv ready ==="
 	@echo "  Run:  source $(VENV)/bin/activate"
+
+# =============================================================================
+
+toolchain: ## Download the GCC 11 and GCC 15 AArch64 toolchains
+	@echo "=== Downloading AArch64 toolchains ==="
+	@echo "Destination: $(ROOT)/tc"
+	python3 ./tools/download_toolchains.py
+	@echo "=== Toolchain download complete ==="
+	@tc/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc --version | sed -n '1p'
+	@tc/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld --version | sed -n '1p'
+	@tc/arm-gnu-toolchain-15.2.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc --version | sed -n '1p'
+	@tc/arm-gnu-toolchain-15.2.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld --version | sed -n '1p'
