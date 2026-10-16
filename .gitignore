@@ -1,6 +1,11 @@
 *.dump
 build
+builds
 .venv
 pyenv
 .pyenv
 .sel4_cache
+/toolchains/
+tc
+/tc/
+tc/
