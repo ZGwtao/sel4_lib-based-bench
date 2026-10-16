@@ -63,8 +63,8 @@ apply-patches: ## Apply all patches under patches/ to their matching submodules
 
 venv: ## Create Python venv and print activation command
 	python3 -m venv $(VENV)
-	$(VENV)/bin/pip install --upgrade pip setuptools
-	$(VENV)/bin/pip install setuptools sel4-deps
+	$(VENV)/bin/pip install --upgrade pip
+	$(VENV)/bin/pip install 'setuptools<81' sel4-deps
 	@[ -f requirements.txt ] && $(VENV)/bin/pip install -r requirements.txt || true
 	@echo ""
 	@echo "=== venv ready ==="
