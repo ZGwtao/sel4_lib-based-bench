@@ -1,6 +1,4 @@
-# seL4 IPC Fastpath Lab
-
-seL4 IPC Fastpath Lab is a reproducible build, benchmarking, and static-analysis environment for studying how compiler code generation and kernel configuration affect the seL4 IPC fastpath.  It provides:
+This repository provides a reproducible build, benchmarking, and static-analysis environment for studying how compiler code generation and kernel configuration affect the seL4 IPC fastpath.  It includes:
 
 - pinned seL4 16.0.0-compatible source dependencies;
 - GCC 11.3/binutils 2.38 and GCC 15.2/binutils 2.45 toolchains;
@@ -14,7 +12,7 @@ The current system-level experiment matrix compares:
 - one-core SMP versus a unicore kernel; and
 - Arm hypervisor support enabled versus disabled.
 
-Each build produces a complete seL4 boot image containing the elfloader, kernel, fglbench root task, and benchset application.  The lab currently targets the ODROID-C4/AArch64 platform and focuses on the single-core IPC ping-pong path.
+Each build produces a complete seL4 boot image containing the elfloader, kernel, fglbench root task, and benchset application.  This project currently targets the ODROID-C4/AArch64 platform and focuses on the single-core IPC ping-pong path.
 
 ## Quick start
 
@@ -171,7 +169,7 @@ Keeping the branch name in the path prevents CMake caches and binaries from diff
 
 ## Benchmarks
 
-<strong>These benchmarks are derived from the sel4test-based <a href="https://github.com/JE-Archer/sel4test/tree/fgs">fglbench</a> written by James Archer in 2022–2023.  It was originally developed to compare the performance of IPC operations on multicore fine-grained-locking and SMP kernels.  seL4 IPC Fastpath Lab currently uses only its single-core IPC ping-pong component.</strong>
+<strong>These benchmarks are derived from the sel4test-based <a href="https://github.com/JE-Archer/sel4test/tree/fgs">fglbench</a> written by James Archer in 2022–2023.  It was originally developed to compare the performance of IPC operations on multicore fine-grained-locking and SMP kernels.  This repository currently uses only its single-core IPC ping-pong component.</strong>
 
 Most workloads report completed loop iterations during a timer interval and an average cycle cost derived from that count.  Benchmark 3 is different: it reads the cycle counter around each IPC round trip and reports the maximum observed cost.
 
