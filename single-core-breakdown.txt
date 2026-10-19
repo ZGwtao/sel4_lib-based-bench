@@ -11,11 +11,11 @@ difference at source-level:
     => some logic that checks the core affinity
 
 - by default with fastpath enabled
-    + 877 cycles
+    + 819 cycles
 - reduced: lock acquire + release (no big kernel lock)
-    + 795 cycles
+    + 730 cycles
 - reduced: (1) lock acquire + release, (2) SMP affinity check
-    + 788 cycles
+    + 723 cycles
 
 unicore by default:
     + 677 cycles
@@ -35,10 +35,16 @@ places where data accessing pattern could be different:
         => lazyFPURestore can use the state that cached at the primary control flow (i.e., fastpath)
         => but it still has to calculate the precise offset, which costs some cycles
         => if we disable lazyFPURestore
-            + unicore:  629 cycles (delta = 677 - 629 = 48 cycles)
-            + smp:      727 cycles (delta = 788 - 727 = 61 cycles)
+            + unicore:  631 cycles (delta = 677 - 631 = 46 cycles)
+            + smp:      661 cycles (delta = 723 - 661 = 62 cycles)
         => so the cost for SMP to access data within lazyFPURestore is 61 - 48 cycles = 13 more than unicore
         => but what is the difference within the fastpath?
+
+after disabling vcpu_switch
+    + unicore:  631 (?)
+    + smp:      661
+
+
 
 ==== to calculate the difference, we can simply compared the instruction sequence
 ==== at this point, the primary difference between the two instruction sequence is:
