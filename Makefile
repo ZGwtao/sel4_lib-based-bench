@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: setup reset apply-patches create-links venv toolchain help
+.PHONY: setup reset apply-patches create-links venv toolchain kernel-variants help
 
 # Root of the repo (where this Makefile lives)
 ROOT := $(shell pwd)
@@ -77,7 +77,12 @@ toolchain: ## Download the GCC 11 and GCC 15 AArch64 toolchains
 	@echo "Destination: $(ROOT)/tc"
 	python3 ./tools/download_toolchains.py
 	@echo "=== Toolchain download complete ==="
-	@tc/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc --version | sed -n '1p'
-	@tc/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld --version | sed -n '1p'
-	@tc/arm-gnu-toolchain-15.2.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc --version | sed -n '1p'
-	@tc/arm-gnu-toolchain-15.2.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld --version | sed -n '1p'
+	@tc/gcc11/bin/aarch64-none-linux-gnu-gcc --version | sed -n '1p'
+	@tc/gcc11/bin/aarch64-none-linux-gnu-ld --version | sed -n '1p'
+	@tc/gcc15/bin/aarch64-none-linux-gnu-gcc --version | sed -n '1p'
+	@tc/gcc15/bin/aarch64-none-linux-gnu-ld --version | sed -n '1p'
+
+# =============================================================================
+
+kernel-variants: ## Create the seL4 16 getCurrentCPUIndex experiment branches
+	./tools/setup_kernel_variants.py

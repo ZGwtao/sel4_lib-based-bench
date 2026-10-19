@@ -34,7 +34,7 @@ TOOLCHAINS = (
 
 
 def is_installed(toolchain: dict[str, str]) -> bool:
-    gcc = TOOLCHAINS_DIR / toolchain["dir"] / "bin/aarch64-none-linux-gnu-gcc"
+    gcc = TOOLCHAINS_DIR / toolchain["name"] / "bin/aarch64-none-linux-gnu-gcc"
     if not gcc.is_file():
         return False
 
@@ -56,7 +56,7 @@ def download(target: dict[str, str]) -> None:
         print(f"{target['name']}: already installed, skipping")
         return
 
-    d = TOOLCHAINS_DIR / target["dir"]
+    d = TOOLCHAINS_DIR / target["name"]
     if d.exists():
         raise RuntimeError(f"{d} exists but not expected")
 
