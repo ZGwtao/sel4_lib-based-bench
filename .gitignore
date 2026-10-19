@@ -1,6 +1,7 @@
 *.dump
 build
 builds
+/fastpath-analysis/
 .venv
 pyenv
 .pyenv
