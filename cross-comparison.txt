@@ -1,0 +1,50 @@
+if hyp=off
+    all=arch_c_entry_hook,arch_c_exit_hook,c_entry_hook,c_exit_hook
+else
+    all=arch_c_entry_hook,arch_c_exit_hook,c_entry_hook,c_exit_hook
+        + vcpu_switch
+
+smp=on,hyp=off
+
+    gcc-11 + ld-2.38
+
+        + default + no_inline getCurrentCPUIndex: 893
+        + default + always inline getCurrentCPUIndex: 1187
+        + default + default getCurrentCPUIndex: 858
+
+        + always inline all + no_inline getCurrentCPUIndex: 819
+        + always inline all + always inline getCurrentCPUIndex: 1183
+        + always inline all + default getCurrentCPUIndex: 836
+
+    gcc-15 + ld-2.38
+
+        + default + no_inline getCurrentCPUIndex: 931
+        + default + always inline getCurrentCPUIndex: 1197
+        + default + default getCurrentCPUIndex: 1197
+
+        + always inline all + no_inline getCurrentCPUIndex: 853
+        + always inline all + always inline getCurrentCPUIndex: 1191
+        + always inline all + default getCurrentCPUIndex: 1191
+
+
+smp=on,hyp=on
+
+    gcc-11 + ld-2.38
+
+        + default + no_inline getCurrentCPUIndex: 1080
+        + default + always inline getCurrentCPUIndex: 1383
+        + default + default getCurrentCPUIndex: 1061
+
+        + always inline all + no_inline getCurrentCPUIndex: 965
+        + always inline all + always inline getCurrentCPUIndex: 1366
+        + always inline all + default getCurrentCPUIndex: 987
+
+    gcc-15 + ld-2.38
+
+        + default + no_inline getCurrentCPUIndex: 1092
+        + default + always inline getCurrentCPUIndex: 1371
+        + default + default getCurrentCPUIndex: 1372
+
+        + always inline all + no_inline getCurrentCPUIndex: 979
+        + always inline all + always inline getCurrentCPUIndex: 1356
+        + always inline all + default getCurrentCPUIndex: 1360
