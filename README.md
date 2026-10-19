@@ -1,10 +1,9 @@
-This repository provides a reproducible build, benchmarking, and static-analysis environment for studying how compiler code generation and kernel configuration affect the seL4 IPC fastpath.  It includes:
+This repository provides a reproducible build and benchmarking environment for studying how compiler code generation and kernel configuration affect the seL4 IPC fastpath.  It includes:
 
 - pinned seL4 16.0.0-compatible source dependencies;
 - GCC 11.3/binutils 2.38 and GCC 15.2/binutils 2.45 toolchains;
 - repeatable kernel and application image builds;
-- selectable kernel optimisation variants; and
-- instruction-stream reports for the IPC Call and ReplyRecv fastpaths.
+- selectable kernel optimisation variants.
 
 The current system-level experiment matrix compares:
 
@@ -260,42 +259,6 @@ FGLBENCH | All is well in the universe
 
 Record the full build variant together with every result: compiler, kernel branch, SMP setting, HYP setting, benchmark number, and kernel commit.
 
-## Compare fastpath instruction streams
-
-`tools/analyze_fastpath.py` compares already-built kernels; it does not rebuild or modify them.  Pass two or more build directories, `kernel.elf` files, or complete `fglbench-image-arm-odroidc4` paths.  The first input is the baseline.
-
-For example, compare the GCC 11 and GCC 15 no-inline builds:
-
-```sh
-./tools/analyze_fastpath.py \
-    --output-dir fastpath-analysis/noinline-gcc11-vs-gcc15 \
-    builds/gcc11-smp-nohyp-v16-getcurrentcpu-no-inline \
-    builds/gcc15-smp-nohyp-v16-getcurrentcpu-no-inline
-```
-
-The script automatically:
-
-1. resolves each input to its unstripped `kernel/kernel.elf`;
-2. infers GCC 11 or GCC 15 and uses the matching repository-local `objdump`;
-3. disassembles `c_handle_fastpath_call` and `c_handle_fastpath_reply_recv` by symbol name;
-4. records instruction, byte, load, store, branch, call, TPIDR-read, and `getCurrentCPUIndex()` call counts;
-5. normalises relocated addresses while retaining mnemonics, operands, branch structure, and symbolic call targets; and
-6. compares every later input against the first input.
-
-The output directory contains:
-
-| File | Purpose |
-|---|---|
-| `comparison.md` | Human-readable summary table. |
-| `summary.csv` | Metrics, call targets, and ELF paths. |
-| `*.asm` | Raw `objdump` evidence. |
-| `*.normalized.asm` | Address-normalised instruction streams. |
-| `*.diff` | Unified instruction-stream diff against the baseline. |
-
-This mirrors the manual comparison workflow used during development: preserve the raw disassembly, compare aggregate shape first, then read the normalised diff around the relevant control-flow paths.
-
-The statistics cover the complete static function, including error and slowpath branches.  They do **not** tell how many instructions execute during one successful `Call`/`ReplyRecv` round trip.  Treat them as a way to locate compiler/code-generation differences. Confirm a performance explanation with hardware cycle measurements or a traced hot path rather than equating total function length with runtime cost.
-
 ## Inspecting and reproducing a build
 
 Show the selected kernel revision:
@@ -312,16 +275,6 @@ less builds/<variant>/kernel/gen_config.h
 less builds/<variant>/kernel/autoconf/autoconf.h
 ```
 
-Inspect a fastpath symbol using the matching toolchain:
-
-```sh
-tc/gcc15/bin/aarch64-none-linux-gnu-objdump \
-    -d --disassemble=c_handle_fastpath_call \
-    builds/<variant>/kernel/kernel.elf
-```
-
-Use the GCC 11 `objdump` for a GCC 11 build when making compiler comparisons.
-
 ## Repository layout
 
 ```text
@@ -332,7 +285,6 @@ projects/                 seL4 userspace library submodules
 patches/                  project integration patches used by make setup
 seL4-patch/aarch64/       kernel experiment patches
 tools/setup_kernel_variants.py  create local kernel experiment branches
-tools/analyze_fastpath.py       compare kernel fastpath instruction streams
 tools/download_toolchains.py    download the two cross-compilers
 build_variant.py          configure-and-build entry point
 tc/                       downloaded toolchains (ignored)
