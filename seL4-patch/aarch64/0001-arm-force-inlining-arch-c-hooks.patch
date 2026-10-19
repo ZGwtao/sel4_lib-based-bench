@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Guangtao Zhu <guangtaozhu@outlook.com>
+Date: Mon, 19 Oct 2026 18:00:00 +1100
+Subject: [PATCH] arm: force inline arch C entry and exit hooks
+
+Signed-off-by: Guangtao Zhu <guangtaozhu@outlook.com>
+---
+ include/arch/arm/arch/kernel/traps.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/arch/arm/arch/kernel/traps.h b/include/arch/arm/arch/kernel/traps.h
+--- a/include/arch/arm/arch/kernel/traps.h
++++ b/include/arch/arm/arch/kernel/traps.h
+@@ -10,12 +10,12 @@
+ #include <machine.h>
+ #include <util.h>
+ 
+-static inline void arch_c_entry_hook(void)
++static inline void FORCE_INLINE arch_c_entry_hook(void)
+ {
+     arm_save_thread_id(NODE_STATE(ksCurThread));
+ }
+ 
+-static inline void arch_c_exit_hook(void)
++static inline void FORCE_INLINE arch_c_exit_hook(void)
+ {
+     arm_load_thread_id(NODE_STATE(ksCurThread));
+ }

@@ -100,18 +100,17 @@ This Make target runs `tools/setup_kernel_variants.py`.
 
 ### Selectable kernel optimisation variants
 
-The framework currently supports one selectable kernel optimisation point.  This table is intended to grow as additional fastpath-related transformations are added:
+The framework currently supports three optimisation points.  The two hook points share one switch, so each `getCurrentCPUIndex()` strategy can be combined with either default hooks or always-inline hooks:
 
-| Optimisation point | Scope | Variant | Kernel branch | Source declaration |
-|---|---|---|---|---|
-| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Compiler default | `v16-getcurrentcpu-default` | `static inline CONST` |
-| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Force inline | `v16-getcurrentcpu-force-inline` | `static inline CONST ... FORCE_INLINE` |
-| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | No inline | `v16-getcurrentcpu-no-inline` | `static NO_INLINE CONST` |
-| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Non-volatile asm | `v16-getcurrentcpu-nonvolatile-asm` | `static inline CONST`; `asm` instead of `asm volatile` |
+| Optimisation point | Scope | Selectable strategies |
+|---|---|---|
+| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Default (`static inline CONST`); force inline (`FORCE_INLINE`); no inline (`NO_INLINE`); non-volatile asm (default inline declaration, `asm` instead of `asm volatile`) |
+| `arch_c_entry_hook()` / `arch_c_exit_hook()` | ARM entry/exit hook | Default (`static inline`); always inline (`FORCE_INLINE`) |
+| `c_entry_hook()` / `c_exit_hook()` | Generic entry/exit hook | Default (`static inline`); always inline (`FORCE_INLINE`) |
 
-The setup script creates these branches from the seL4 `16.0.0` tag.
+The setup script creates eight branches from the seL4 `16.0.0` tag: `v16-getcurrentcpu-{default,force-inline,no-inline,nonvolatile-asm}` for default hooks, plus the same four names with `-hooks-inline` appended for always-inline hooks.  Both hook points always use the same strategy in a branch.
 
-The source patches are stored in `seL4-patch/aarch64/`.  The default patch is an empty marker commit, so it identifies the baseline without changing kernel source.
+The source patches are stored in `seL4-patch/aarch64/`.  The default CPU patch is an empty marker commit, so it identifies the baseline without changing kernel source.  Each `-hooks-inline` branch applies its CPU patch followed by separate patches for the ARM and generic hooks.
 
 The setup script is safe to rerun: existing branches are skipped.  It refuses to switch branches if `kernel/` contains uncommitted changes and restores the original kernel branch before exiting.
 
@@ -206,22 +205,19 @@ Select a workload with `--benchmark`, for example:
 
 ## Build all compiler/kernel-optimisation combinations
 
-The following loop builds benchmark 0 for both compilers and all selectable kernel optimisation variants, with SMP enabled and hypervisor support disabled:
+The following loop builds benchmark 0 for both compilers and all eight combinations of CPU-index and hook strategies, with SMP enabled and hypervisor support disabled:
 
 ```sh
 for compiler in gcc11 gcc15; do
-    for branch in \
-        v16-getcurrentcpu-default \
-        v16-getcurrentcpu-force-inline \
-        v16-getcurrentcpu-no-inline \
-        v16-getcurrentcpu-nonvolatile-asm
-    do
-        ./build_variant.py \
-            --compiler "$compiler" \
-            --smp on \
-            --hyp off \
-            --kernel-branch "$branch" \
-            --benchmark 0
+    for cpu in default force-inline no-inline nonvolatile-asm; do
+        for hooks in "" -hooks-inline; do
+            ./build_variant.py \
+                --compiler "$compiler" \
+                --smp on \
+                --hyp off \
+                --kernel-branch "v16-getcurrentcpu-${cpu}${hooks}" \
+                --benchmark 0
+        done
     done
 done
 ```

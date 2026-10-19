@@ -10,7 +10,7 @@ KERNEL = PROJECT / "kernel"
 PATCH_DIR = PROJECT / "seL4-patch" / "aarch64"
 BASE = "16.0.0"
 
-VARIANTS = (
+CPU_VARIANTS = (
     (
         "v16-getcurrentcpu-default",
         "0001-aarch64-smp-default-getCurrentCPUIndex.patch",
@@ -27,6 +27,19 @@ VARIANTS = (
         "v16-getcurrentcpu-nonvolatile-asm",
         "0001-aarch64-smp-nonvolatile-asm-getCurrentCPUIndex.patch",
     ),
+)
+
+HOOK_PATCHES = (
+    "0001-arm-force-inlining-arch-c-hooks.patch",
+    "0002-force-inlining-c-hooks.patch",
+)
+
+VARIANTS = tuple(
+    (branch, (cpu_patch,))
+    for branch, cpu_patch in CPU_VARIANTS
+) + tuple(
+    (f"{branch}-hooks-inline", (cpu_patch, *HOOK_PATCHES))
+    for branch, cpu_patch in CPU_VARIANTS
 )
 
 
@@ -58,11 +71,12 @@ def branch_exists(branch: str) -> bool:
     return result.returncode == 0
 
 
-def create_variant(branch: str, patch: Path) -> None:
+def create_variant(branch: str, patches: tuple[Path, ...]) -> None:
     git("switch", "--create", branch, BASE)
     try:
         # --empty=keep lets the default variant use an empty marker commit.
-        git("am", "--empty=keep", str(patch))
+        for patch in patches:
+            git("am", "--empty=keep", str(patch))
     except subprocess.CalledProcessError:
         git("am", "--abort", check=False)
         git("switch", "--detach", BASE)
@@ -88,22 +102,23 @@ def main() -> int:
         print(f"error: kernel tag not found: {BASE}", file=sys.stderr)
         return 1
 
-    for _, patch_name in VARIANTS:
-        patch = PATCH_DIR / patch_name
-        if not patch.is_file():
-            print(f"error: patch not found: {patch}", file=sys.stderr)
-            return 1
+    for _, patch_names in VARIANTS:
+        for patch_name in patch_names:
+            patch = PATCH_DIR / patch_name
+            if not patch.is_file():
+                print(f"error: patch not found: {patch}", file=sys.stderr)
+                return 1
 
     original_branch = git_output("branch", "--show-current")
     original_commit = git_output("rev-parse", "HEAD")
 
     try:
-        for branch, patch_name in VARIANTS:
+        for branch, patch_names in VARIANTS:
             if branch_exists(branch):
                 print(f"Skipping existing branch: {branch}")
                 continue
             print(f"Creating branch: {branch}")
-            create_variant(branch, PATCH_DIR / patch_name)
+            create_variant(branch, tuple(PATCH_DIR / name for name in patch_names))
     finally:
         if original_branch:
             git("switch", original_branch)
