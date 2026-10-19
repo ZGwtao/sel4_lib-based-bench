@@ -879,6 +879,12 @@ bm_ipc_tp(env_t *env)
         fglprintf("Spawned benchset process for core %d\n", i);
         seL4_Call(bench_proc_per_core[i].fault_endpoint.cptr, seL4_MessageInfo_new(0, 0, 0, 0));
         fglprintf("Benchset process for core %d has started\n", i);
+        seL4_TCB_SetFlags_t flags = seL4_TCB_SetFlags(
+            bench_proc_per_core[i].thread.tcb.cptr,
+            seL4_TCBFlag_NoFlag,
+            seL4_TCBFlag_fpuDisabled
+        );
+        assert(flags.error == seL4_NoError);
         seL4_SchedContext_Unbind(bench_proc_per_core[i].thread.sched_context.cptr);
         fglprintf("Benchset process for core %d has been unbound\n", i);
     }
