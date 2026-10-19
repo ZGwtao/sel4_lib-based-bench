@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Guangtao Zhu <guangtaozhu@outlook.com>
+Date: Mon, 19 Oct 2026 12:00:00 +1100
+Subject: [PATCH] aarch64,smp: make getCurrentCPUIndex asm non-volatile
+
+Signed-off-by: Guangtao Zhu <guangtaozhu@outlook.com>
+---
+ include/arch/arm/arch/64/mode/smp/smp.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/arch/arm/arch/64/mode/smp/smp.h b/include/arch/arm/arch/64/mode/smp/smp.h
+index c46872a40..af7446160 100644
+--- a/include/arch/arm/arch/64/mode/smp/smp.h
++++ b/include/arch/arm/arch/64/mode/smp/smp.h
+@@ -22,9 +22,9 @@ getCurrentCPUIndex(void)
+ {
+     cpu_id_t id;
+     if (config_set(CONFIG_ARM_HYPERVISOR_SUPPORT)) {
+-        asm volatile("mrs %0, tpidr_el2" : "=r"(id));
++        asm("mrs %0, tpidr_el2" : "=r"(id));
+     } else {
+-        asm volatile("mrs %0, tpidr_el1" : "=r"(id));
++        asm("mrs %0, tpidr_el1" : "=r"(id));
+     }
+     return (id & CPUID_MASK);
+ }

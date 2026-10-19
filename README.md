@@ -107,6 +107,7 @@ The framework currently supports one selectable kernel optimisation point.  This
 | `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Compiler default | `v16-getcurrentcpu-default` | `static inline CONST` |
 | `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Force inline | `v16-getcurrentcpu-force-inline` | `static inline CONST ... FORCE_INLINE` |
 | `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | No inline | `v16-getcurrentcpu-no-inline` | `static NO_INLINE CONST` |
+| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Non-volatile asm | `v16-getcurrentcpu-nonvolatile-asm` | `static inline CONST`; `asm` instead of `asm volatile` |
 
 The setup script creates these branches from the seL4 `16.0.0` tag.
 
@@ -203,16 +204,17 @@ Select a workload with `--benchmark`, for example:
     --benchmark 4
 ```
 
-## Build all compiler/inline combinations
+## Build all compiler/kernel-optimisation combinations
 
-The following loop builds benchmark 0 for both compilers and all three inline variants, with SMP enabled and hypervisor support disabled:
+The following loop builds benchmark 0 for both compilers and all selectable kernel optimisation variants, with SMP enabled and hypervisor support disabled:
 
 ```sh
 for compiler in gcc11 gcc15; do
     for branch in \
         v16-getcurrentcpu-default \
         v16-getcurrentcpu-force-inline \
-        v16-getcurrentcpu-no-inline
+        v16-getcurrentcpu-no-inline \
+        v16-getcurrentcpu-nonvolatile-asm
     do
         ./build_variant.py \
             --compiler "$compiler" \

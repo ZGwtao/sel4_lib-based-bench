@@ -23,6 +23,10 @@ VARIANTS = (
         "v16-getcurrentcpu-no-inline",
         "0001-aarch64-smp-no-inlining-getCurrentCPUIndex.patch",
     ),
+    (
+        "v16-getcurrentcpu-nonvolatile-asm",
+        "0001-aarch64-smp-nonvolatile-asm-getCurrentCPUIndex.patch",
+    ),
 )
 
 
