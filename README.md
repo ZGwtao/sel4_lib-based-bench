@@ -1,27 +1,28 @@
-# seL4 IPC fastpath benchmark
+# seL4 IPC Fastpath Lab
 
-This repository builds an IPC/notification benchmark for the Hardkernel
-ODROID-C4.  It is intended for controlled comparisons of:
+seL4 IPC Fastpath Lab is a reproducible build, benchmarking, and static-analysis environment for studying how compiler code generation and kernel configuration affect the seL4 IPC fastpath.  It provides:
+
+- pinned seL4 16.0.0-compatible source dependencies;
+- GCC 11.3/binutils 2.38 and GCC 15.2/binutils 2.45 toolchains;
+- repeatable kernel and application image builds;
+- selectable kernel optimisation variants; and
+- instruction-stream reports for the IPC Call and ReplyRecv fastpaths.
+
+The current system-level experiment matrix compares:
 
 - GCC 11.3 versus GCC 15.2;
-- one-core SMP versus a unicore kernel;
-- Arm hypervisor support enabled versus disabled; and
-- the default, forced-inline, and no-inline implementations of
-  `getCurrentCPUIndex()`.
+- one-core SMP versus a unicore kernel; and
+- Arm hypervisor support enabled versus disabled.
 
-The build produces a complete seL4 boot image containing the elfloader, kernel,
-fglbench root task, and benchset application.  The repository currently targets
-the ODROID-C4/AArch64 platform and seL4 16.0.0.
+Each build produces a complete seL4 boot image containing the elfloader, kernel, fglbench root task, and benchset application.  The lab currently targets the ODROID-C4/AArch64 platform and focuses on the single-core IPC ping-pong path.
 
 ## Quick start
 
-The following sequence starts from a fresh clone and builds benchmark 0 with
-GCC 15, one-core SMP, hypervisor support disabled, and the default kernel
-variant.
+The following sequence starts from a fresh clone and builds benchmark 0 with GCC 15, one-core SMP, hypervisor support disabled, and the default kernel variant (for available branches, see [Section 4](#4-create-the-kernel-experiment-branches)).
 
 ```sh
-git clone --recursive <repository-url> sel4_lib-based-bench
-cd sel4_lib-based-bench
+git clone --recursive <repository-url> sel4-ipc-fastpath-lab
+cd sel4-ipc-fastpath-lab
 
 make setup
 make venv
@@ -48,8 +49,7 @@ builds/gcc15-smp-nohyp-v16-getcurrentcpu-default/
 
 ## 1. Initialise the source tree
 
-For a new clone, initialise the submodules and apply the repository's sel4test
-integration patch:
+For a new clone, initialise the submodules and apply the repository's sel4test integration patch:
 
 ```sh
 make setup
@@ -61,10 +61,7 @@ This target performs three operations:
 2. creates the `fglbench` and `benchset` links under sel4test; and
 3. applies the patches under `patches/` to their corresponding submodules.
 
-`make setup` is intended for initial setup or an intentional reset.  Its
-`reset` stage discards uncommitted changes inside submodules.  Do not rerun it
-after editing `kernel/` or another submodule unless those changes have been
-committed or saved elsewhere.
+`make setup` is intended for initial setup or an intentional reset.  Its `reset` stage discards uncommitted changes inside submodules.  Do not rerun it after editing `kernel/` or another submodule unless those changes have been committed or saved elsewhere.
 
 The individual setup targets are also available:
 
@@ -95,7 +92,7 @@ Both toolchains are downloaded into the ignored `tc/` directory:
 
 ## 4. Create the kernel experiment branches
 
-Create the three local branches used by the inline experiment:
+Create the local branches used by the selectable kernel optimisation experiments:
 
 ```sh
 make kernel-variants
@@ -103,25 +100,23 @@ make kernel-variants
 
 This Make target runs `tools/setup_kernel_variants.py`.
 
-The script creates the following branches from the seL4 `16.0.0` tag:
+### Selectable kernel optimisation variants
 
-| Branch | `getCurrentCPUIndex()` declaration |
-|---|---|
-| `v16-getcurrentcpu-default` | `static inline CONST` |
-| `v16-getcurrentcpu-force-inline` | `static inline CONST ... FORCE_INLINE` |
-| `v16-getcurrentcpu-no-inline` | `static NO_INLINE CONST` |
+The framework currently supports one selectable kernel optimisation point.  This table is intended to grow as additional fastpath-related transformations are added:
 
-The source patches are stored in `seL4-patch/aarch64/`.  The default patch is
-an empty marker commit, so it identifies the baseline without changing kernel
-source.
+| Optimisation point | Scope | Variant | Kernel branch | Source declaration |
+|---|---|---|---|---|
+| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Compiler default | `v16-getcurrentcpu-default` | `static inline CONST` |
+| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | Force inline | `v16-getcurrentcpu-force-inline` | `static inline CONST ... FORCE_INLINE` |
+| `getCurrentCPUIndex()` | AArch64 SMP CPU-index lookup | No inline | `v16-getcurrentcpu-no-inline` | `static NO_INLINE CONST` |
 
-The setup script is safe to rerun: existing branches are skipped.  It refuses
-to switch branches if `kernel/` contains uncommitted changes and restores the
-original kernel branch before exiting.
+The setup script creates these branches from the seL4 `16.0.0` tag.
 
-Branch creation and image building are deliberately separate.  The setup
-script creates reproducible source variants; `build_variant.py` only selects
-an existing branch and builds it.
+The source patches are stored in `seL4-patch/aarch64/`.  The default patch is an empty marker commit, so it identifies the baseline without changing kernel source.
+
+The setup script is safe to rerun: existing branches are skipped.  It refuses to switch branches if `kernel/` contains uncommitted changes and restores the original kernel branch before exiting.
+
+Branch creation and image building are deliberately separate.  The setup script creates reproducible source variants; `build_variant.py` only selects an existing branch and builds it.
 
 ## 5. Build an image
 
@@ -162,9 +157,7 @@ For example, build the GCC 11 no-inline variant:
 | `--configure-only` | flag | Runs CMake without Ninja. |
 | `--dry-run` | flag | Prints the branch switch and build commands without executing them. |
 
-Although the SMP experiment uses `NumCores=1`, an SMP-enabled kernel still
-executes SMP-specific kernel paths.  This is intentional: it isolates the cost
-of enabling SMP from the workload scaling effects of using additional cores.
+Although the SMP experiment uses `NumCores=1`, an SMP-enabled kernel still executes SMP-specific kernel paths.  This is intentional: it isolates the cost of enabling SMP from the workload scaling effects of using additional cores.
 
 ### Build-directory naming
 
@@ -174,31 +167,34 @@ Unless `--build-dir` is supplied, each combination receives a separate path:
 builds/<compiler>-<smp|unicore>-<hyp|nohyp>-<kernel-branch>/
 ```
 
-Keeping the branch name in the path prevents CMake caches and binaries from
-different inline variants from overwriting one another.  If you provide a
-custom `--build-dir`, use a distinct directory for every experimental variant.
+Keeping the branch name in the path prevents CMake caches and binaries from different inline variants from overwriting one another.  If you provide a custom `--build-dir`, use a distinct directory for every experimental variant.
 
 ## Benchmarks
 
-Benchmark 0 is the primary IPC fastpath experiment: the client performs
-`seL4_Call()` while the server repeatedly performs `seL4_ReplyRecv()`.
+<strong>These benchmarks are derived from the sel4test-based <a href="https://github.com/JE-Archer/sel4test/tree/fgs">fglbench</a> written by James Archer in 2022–2023.  It was originally developed to compare the performance of IPC operations on multicore fine-grained-locking and SMP kernels.  seL4 IPC Fastpath Lab currently uses only its single-core IPC ping-pong component.</strong>
 
-The current workload table in `fglbench/src/main.c` is:
+Most workloads report completed loop iterations during a timer interval and an average cycle cost derived from that count.  Benchmark 3 is different: it reads the cycle counter around each IPC round trip and reports the maximum observed cost.
 
-| Number | Function |
-|---:|---|
-| 0 | `bm_ipc_tp` |
-| 1 | `bm_ipc_tp_nc` |
-| 2 | `bm_ipc_tp_1c` |
-| 3 | `bm_ipc_max_nc` |
-| 4 | `bm_signal_tp` |
-| 5 | `bm_signal_tp_nc` |
-| 6 | `bm_signal_tp_1c` |
-| 7 | `bm_nbwait_tp` |
-| 8 | `bm_nbsend_tp` |
-| 9 | `bm_send_and_recv_tp` |
-| 10 | `bm_signal_and_wait_tp` |
-| 11 | `bm_nbsendrecv_tp` |
+There are two kinds of workload in this benchmark: (1) the `_nc` workloads run the measured worker on one core and place a contender (which is a worker that repeatedly invokes `seL4_TCB_CopyRegisters()`) on every other configured core, and (2) the `_1c` workloads reserve only the last configured core for one contender and run measured workers on the preceding cores. With `NumCores=1`, `_1c` has no contender and reduces to one measured worker on core 0.
+
+The workload dispatch table in `fglbench/src/main.c` is:
+
+| Number | Function | What it benchmarks |
+|---:|---|---|
+| 0 | `bm_ipc_tp` | Cross-address-space IPC fastpath throughput.  For every configured core, an fglbench client repeatedly executes `seL4_Call()` to a separate benchset process whose server loops in `seL4_ReplyRecv()`.  This is the primary Call/ReplyRecv round-trip experiment. |
+| 1 | `bm_ipc_tp_nc` | Same-address-space IPC throughput under contention.  A client/server thread pair performs `seL4_Call()`/`seL4_ReplyRecv()` on core 0, while every remaining core runs a `seL4_TCB_CopyRegisters()` contender. |
+| 2 | `bm_ipc_tp_1c` | Same-address-space IPC throughput with one contender core.  IPC ping-pong pairs run on the measured cores and the final core runs one `seL4_TCB_CopyRegisters()` contender. |
+| 3 | `bm_ipc_max_nc` | Worst observed same-address-space IPC round-trip latency.  The client measures cycles around each `seL4_Call()` on core 0; all remaining cores run contenders.  It reports maximum cycles rather than throughput. |
+| 4 | `bm_signal_tp` | Uncontended `seL4_Signal()` throughput.  One thread per configured core repeatedly signals its own notification, with no waiting receiver. |
+| 5 | `bm_signal_tp_nc` | `seL4_Signal()` throughput under contention.  The measured signal loop runs on core 0 and every remaining core runs a contender. |
+| 6 | `bm_signal_tp_1c` | `seL4_Signal()` throughput with one contender core.  Signal loops occupy the measured cores and the final core runs one contender. |
+| 7 | `bm_nbwait_tp` | `seL4_NBWait()` polling throughput.  One thread per configured core repeatedly performs a non-blocking wait on an otherwise unsignalled private notification. |
+| 8 | `bm_nbsend_tp` | `seL4_NBSend()` throughput when no receiver is waiting.  One thread per configured core repeatedly performs a non-blocking send to its own endpoint. |
+| 9 | `bm_send_and_recv_tp` | Blocking endpoint ping-pong throughput using separate `seL4_Send()` and `seL4_Recv()` calls between two threads on each core. |
+| 10 | `bm_signal_and_wait_tp` | Notification ping-pong throughput using separate `seL4_Signal()` and `seL4_Wait()` calls between two threads on each core. |
+| 11 | `bm_nbsendrecv_tp` | Combined `seL4_NBSendRecv()` loop throughput between two threads sharing an endpoint on each core. |
+
+The notification ping-pong helpers named `bm_ntfn_tp*` are present in `benchmarks.c`, but they are not entries in the current dispatch table and therefore cannot be selected through `--benchmark`.
 
 Select a workload with `--benchmark`, for example:
 
@@ -211,8 +207,7 @@ Select a workload with `--benchmark`, for example:
 
 ## Build all compiler/inline combinations
 
-The following loop builds benchmark 0 for both compilers and all three inline
-variants, with SMP enabled and hypervisor support disabled:
+The following loop builds benchmark 0 for both compilers and all three inline variants, with SMP enabled and hypervisor support disabled:
 
 ```sh
 for compiler in gcc11 gcc15; do
@@ -253,15 +248,9 @@ Each successful build contains:
 | elfloader | `elfloader/elfloader` |
 | Generated kernel configuration | `kernel/gen_config.h` |
 
-Deploy `images/fglbench-image-arm-odroidc4`, not `kernel/kernel.elf` by itself.
-The complete image already packages the kernel and user-level applications via
-the elfloader.
+Deploy `images/fglbench-image-arm-odroidc4`, not `kernel/kernel.elf` by itself. The complete image already packages the kernel and user-level applications via the elfloader.
 
-Copy or load that image using the ODROID-C4 boot mechanism used by your lab,
-for example an existing U-Boot/TFTP or removable-media workflow.  Board-side
-bootloader installation, network setup, and serial-console configuration are
-not currently automated by this repository.  A hypervisor-enabled kernel must
-also be entered at the exception level expected by that configuration.
+Copy or load that image using the ODROID-C4 boot mechanism used by your lab, for example an existing U-Boot/TFTP or removable-media workflow.  Board-side bootloader installation, network setup, and serial-console configuration are not currently automated by this repository.  A hypervisor-enabled kernel must also be entered at the exception level expected by that configuration.
 
 On a successful run, the serial console should contain output similar to:
 
@@ -273,14 +262,11 @@ FGLBENCH | ### Average cycle cost: ...
 FGLBENCH | All is well in the universe
 ```
 
-Record the full build variant together with every result: compiler, kernel
-branch, SMP setting, HYP setting, benchmark number, and kernel commit.
+Record the full build variant together with every result: compiler, kernel branch, SMP setting, HYP setting, benchmark number, and kernel commit.
 
 ## Compare fastpath instruction streams
 
-`tools/analyze_fastpath.py` compares already-built kernels; it does not rebuild
-or modify them.  Pass two or more build directories, `kernel.elf` files, or
-complete `fglbench-image-arm-odroidc4` paths.  The first input is the baseline.
+`tools/analyze_fastpath.py` compares already-built kernels; it does not rebuild or modify them.  Pass two or more build directories, `kernel.elf` files, or complete `fglbench-image-arm-odroidc4` paths.  The first input is the baseline.
 
 For example, compare the GCC 11 and GCC 15 no-inline builds:
 
@@ -295,12 +281,9 @@ The script automatically:
 
 1. resolves each input to its unstripped `kernel/kernel.elf`;
 2. infers GCC 11 or GCC 15 and uses the matching repository-local `objdump`;
-3. disassembles `c_handle_fastpath_call` and
-   `c_handle_fastpath_reply_recv` by symbol name;
-4. records instruction, byte, load, store, branch, call, TPIDR-read, and
-   `getCurrentCPUIndex()` call counts;
-5. normalises relocated addresses while retaining mnemonics, operands, branch
-   structure, and symbolic call targets; and
+3. disassembles `c_handle_fastpath_call` and `c_handle_fastpath_reply_recv` by symbol name;
+4. records instruction, byte, load, store, branch, call, TPIDR-read, and `getCurrentCPUIndex()` call counts;
+5. normalises relocated addresses while retaining mnemonics, operands, branch structure, and symbolic call targets; and
 6. compares every later input against the first input.
 
 The output directory contains:
@@ -313,16 +296,9 @@ The output directory contains:
 | `*.normalized.asm` | Address-normalised instruction streams. |
 | `*.diff` | Unified instruction-stream diff against the baseline. |
 
-This mirrors the manual comparison workflow used during development: preserve
-the raw disassembly, compare aggregate shape first, then read the normalised
-diff around the relevant control-flow paths.
+This mirrors the manual comparison workflow used during development: preserve the raw disassembly, compare aggregate shape first, then read the normalised diff around the relevant control-flow paths.
 
-The statistics cover the complete static function, including error and
-slowpath branches.  They do **not** tell how many instructions execute during
-one successful `Call`/`ReplyRecv` round trip.  Treat them as a way to locate
-compiler/code-generation differences. Confirm a performance explanation with
-hardware cycle measurements or a traced hot path rather than equating total
-function length with runtime cost.
+The statistics cover the complete static function, including error and slowpath branches.  They do **not** tell how many instructions execute during one successful `Call`/`ReplyRecv` round trip.  Treat them as a way to locate compiler/code-generation differences. Confirm a performance explanation with hardware cycle measurements or a traced hot path rather than equating total function length with runtime cost.
 
 ## Inspecting and reproducing a build
 
